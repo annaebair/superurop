@@ -1,6 +1,7 @@
 import mixem
 import numpy as np
 from scipy.stats import norm
+from em import Moments, TruncatedNormalDistribution
 
 
 class Data_Rep:
