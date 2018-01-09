@@ -61,7 +61,7 @@ class TruncatedNormalDistribution(Distribution):
 
         wsum = np.sum(weights)
 
-        moments = Moments(0, self.sigma, self.lower-self.mu, sef.upper-self.mu)
+        moments = Moments(0, self.sigma, self.a-self.mu, self.b-self.mu)
         m_k = moments.first_moment
         H_k = self.sigma - moments.second_moment
 
@@ -72,28 +72,30 @@ class TruncatedNormalDistribution(Distribution):
         return "Norm[μ={mu:.4g}, σ={sigma:.4g}]".format(mu=self.mu, sigma=self.sigma)
 
 
-data1 = np.random.lognormal(mean=0, sigma=0.75, size=1000)
-data2 = np.random.lognormal(mean=10, sigma=0.9, size=1000)
-data3 = np.concatenate((data2, data1))
-print(data3)
+if __name__ == "__main__":
+	data1 = np.random.lognormal(mean=0, sigma=0.75, size=1000)
+	data2 = np.random.lognormal(mean=10, sigma=0.9, size=1000)
+	data3 = np.concatenate((data2, data1))
+	print(data3)
 
-plt.hist(data3, normed=True, bins=1000)
-# plt.xlim(0, 1000)
-plt.show()
+	plt.hist(data3, normed=True, bins=1000)
+	# plt.xlim(0, 1000)
+	plt.show()
 
-mean_1, stdev_1 = norm.fit(data1)
-mean, std = norm.fit(data3)
+	mean_1, stdev_1 = norm.fit(data1)
+	mean, std = norm.fit(data3)
 
-dist1 = mixem.distribution.LogNormalDistribution(0, 2)
-dist2 = mixem.distribution.LogNormalDistribution(11, 3)
-print(dist2.sigma)
-print(dist2.mu)
+	dist1 = mixem.distribution.LogNormalDistribution(0, 2)
+	dist2 = mixem.distribution.LogNormalDistribution(11, 3)
+	print(dist2.sigma)
+	print(dist2.mu)
 
-weights, distributions, log_l = mixem.em(data3, [dist1, dist2], max_iterations=200)
+	weights, distributions, log_l = mixem.em(data3, [dist1, dist2], max_iterations=200)
 
-print("Weights: ", weights)
-print("Distributions: ", distributions)
-print("Log Likelihood: ", log_l)
+	print("Weights: ", weights)
+	print("Distributions: ", distributions)
+	print("Log Likelihood: ", log_l)
 
-prob = mixem.probability(data3, weights, distributions)
-print("Probability: ", len(prob))
+	prob = mixem.probability(data3, weights, distributions)
+	print("Probability: ", len(prob))
+	
