@@ -18,10 +18,14 @@ class Data_Rep:
 
 
 	def _mixture_cdf(self, data, dist_list):
-
-		weights, distributions, log_l = mixem.em(data, dist_list)
+		# prob = mixem.probability(data, np.array([0.5, 0.5]), dist_list)
+		# print(sum(np.log(prob)))
+		weights, distributions, log_l = mixem.em(data, dist_list, progress_callback=None, initial_weights=[0.5, 0.5], max_iterations=200)
+		# prob = mixem.probability(data, weights, distributions)
+		# print(weights)
+		# print(log_l)
+		# print(sum(np.log(prob)))
 		scipy_dists = self._get_scipy_dists(distributions)
-
 		return lambda query: sum([w * dist.cdf(query) for w, dist in zip(weights, scipy_dists)])
 
 
@@ -31,11 +35,13 @@ class Data_Rep:
 
 		for dist in distributions:
 			dist_type = type(dist)
+			# print(dist_type)
 
 			if dist_type == mixem.distribution.NormalDistribution:
 				loc = dist.mu
 				scale = dist.sigma
 				ss_dist = norm(loc=loc, scale=scale)
+				# print("here")
 				
 			elif dist_type == mixem.distribution.ExponentialDistribution:
 				l = dist.lmbda
@@ -46,50 +52,50 @@ class Data_Rep:
 				b = dist.b
 				loc = dist.mu
 				scale = dist.sigma
-				ss_dist = truncnorm(a=a, b=b, loc=loc, scale=scale)
+				print(a, b, loc, scale)
+				ss_dist = truncnorm(a=(a-loc)/scale, b=(b-loc)/scale, loc=loc, scale=scale)
+				x = np.arange(-10, 10, 0.01)
+				plt.plot(ss_dist.pdf(x))
+				plt.show()
 
 			scipy_dists.append(ss_dist)
-
 		return scipy_dists
 
 
 
 if __name__ == "__main__":
 
-	### Normal Data ###
 
-	# dist1 = mixem.distribution.NormalDistribution(0, 2)
-	# dist2 = mixem.distribution.NormalDistribution(11, 3)
+	dist1 = TruncatedNormalDistribution(mu=0, sigma=1, lower=-1, upper=1)
+	dist2 = TruncatedNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
 
-	# data1 = np.random.normal(loc=0, scale=0.75, size=1000)
-	# data2 = np.random.normal(loc=10, scale=0.9, size=1000)
+	predata1 = np.random.normal(loc=0, scale=1, size=100000)
+	data1 = np.array(list(filter(lambda x: x > -1 and x < 1, predata1)))
 
-	### Exponential Data ###
-
-	# dist1 = mixem.distribution.ExponentialDistribution(2)
-	# dist2 = mixem.distribution.ExponentialDistribution(3)
-
-	# data1 = np.random.exponential(scale=0.5, size=1000)
-	# data2 = np.random.exponential(scale=1.0/20, size=1000)
-
-	### Trucated Normal Data ###
+	predata2 = np.random.normal(loc=3, scale=1, size=100000)
+	data2 = np.array(list(filter(lambda x: x > 2 and x < 4, predata2)))
 	
-	dist1 = TruncatedNormalDistribution(mu=0, sigma=1, lower=-0.5, upper=1)
-	dist2 = TruncatedNormalDistribution(mu=5, sigma=1, lower=4, upper=6)
-
-	predata1 = np.random.normal(loc=0, scale=1, size=10000)
-	predata2 = np.random.normal(loc=6, scale=0.75, size=1000)
-
-	data1 = np.array(list(filter(lambda x: x > -0.5 and x < 1, predata1)))
-	data2 = np.array(list(filter(lambda x: x > 4 and x < 6, predata2)))
+	# dist1 = mixem.distribution.NormalDistribution(11, 3)
+	# data1 = np.random.normal(loc=10, scale=0.9, size=10000)
 
 
 	data = np.concatenate((data2, data1))
 	dist_list = [dist1, dist2]
 	mixture = Data_Rep(data, dist_list)
-	query = 7
-	bincount = len(data1)
-	plt.hist(data, bins=100)
-	plt.show()
+	scipy_dist_1, scipy_dist_2 = mixture._get_scipy_dists(dist_list)
+	# x = np.arange(-10, 10, 0.01)
+	# plt.plot(scipy_dist_2.pdf(x))
+	# # plt.hist(data, bins=1000)
+	# plt.show()
+	
 
-	print("p-value of %s:" %query, mixture.get_p_value(query))
+	# for i in [-3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
+	# # for i in [-10, -5, -1, -0.5, -0.25, 0, 0.25, 0.5, 1, 3, 5, 6, 7, 10]:
+	# 	print("VAL=", i)
+	# 	print("p-value of %s:" %i, mixture.get_p_value(i), "\n")
+
+	# plt.hist(data, bins=100)
+	# rv = truncnorm(a=-1, b=1, loc=3)
+	# x = np.arange(0, 10, 0.01)
+	# plt.plot(x, rv.pdf(x))
+	# plt.show()
