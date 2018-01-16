@@ -72,9 +72,9 @@ class TruncatedNormalDistribution(Distribution):
         H_k = self.sigma - moments.second_moment
 
         self.mu = np.sum(weights * data) / wsum - m_k
-        print((data - self.mu) ** 2)
+        # print((data - self.mu) ** 2)
         self.sigma = np.sqrt(np.sum(weights * (data - self.mu) ** 2) / wsum + H_k)
-        print(self.sigma)
+        # print(self.sigma)
 
     def __repr__(self):
         return "TruncNorm[μ={mu:.4g}, σ={sigma:.4g}]".format(mu=self.mu, sigma=self.sigma)
@@ -91,13 +91,19 @@ class CensoredNormalDistribution(Distribution):
 
     def log_density(self, data):
         assert(len(data.shape) == 1), "Expect 1D data!"
-        return - (data - self.mu) ** 2 / (2 * self.sigma ** 2) - np.log(self.sigma) - 0.5 * np.log(2 * np.pi)
+        log_density = - (data - self.mu) ** 2 / (2 * self.sigma ** 2) - np.log(self.sigma) - 0.5 * np.log(2 * np.pi)
+
+        log_density = np.where(np.logical_or(data < self.a, data > self.b) , -np.inf, log_density)
+        print("log density: ", log_density)
+        return log_density
+
 
     def estimate_parameters(self, data, weights):
         assert(len(data.shape) == 1), "Expect 1D data!"
 
         wsum = np.sum(weights)
-
+        # print("weights: ", weights)
+        # print("wsum: ", wsum)
 
         moments = Moments(self.mu, self.sigma, self.a-self.mu, self.b-self.mu)
         first_moment = moments.first_moment
@@ -107,7 +113,7 @@ class CensoredNormalDistribution(Distribution):
         new_data = np.where(np.logical_or(data < self.a, data > self.b) , first_moment, data)
         new_data = new_data[:, np.newaxis]
         self.mu = np.sum(np.multiply(new_data, weights)) / wsum
-        print("mu: ", self.mu)
+        # print("mu: ", self.mu)
         
         term = new_data - self.mu
         pre_S = np.dot(term, term.T)
@@ -115,7 +121,7 @@ class CensoredNormalDistribution(Distribution):
         R_matrix = np.zeros(pre_S.shape)
         R_matrix[-1][-1] = R
         S = pre_S + R_matrix
-        self.sigma = np.sum(np.dot(S, weights)) / wsum
+        self.sigma = np.sqrt(np.sum(np.dot(S, weights)) / wsum)
 
 
     def __repr__(self):
