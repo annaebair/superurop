@@ -133,9 +133,17 @@ class CensoredNormalDistribution(Distribution):
 		term = new_data - self.mu
 		S_1 = np.dot(term, term.T)
 		R_matrix = np.zeros(S_1.shape)
-		# still need to update this
+		left_R_term = left_trunc_moments.second_moment - left_trunc_moments.first_moment ** 2
+		right_R_term = right_trunc_moments.second_moment - right_trunc_moments.first_moment ** 2
+		left_indices = np.nonzero((new_data == left_trunc_moments.first_moment))[0]
+		for i in left_indices:
+			R_matrix[i][i] = left_R_term
+		right_indices = np.nonzero((new_data == right_trunc_moments.first_moment))[0]
+
+		for i in right_indices:
+			R_matrix[i][i] = right_R_term
 		S = S_1 + R_matrix
-		# self.sigma = np.sum(np.dot(S, weights) / wsum)
+		self.sigma = np.sum(np.dot(S, weights)) / wsum
 
 
 	def __repr__(self):
