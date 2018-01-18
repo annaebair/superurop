@@ -16,7 +16,6 @@ class censorednorm:
 		self.scale = scale
 		self.a = a
 		self.b = b
-		# print("loc: ", loc, "; scale: ", scale)
 
 	def pdf(self, query):
 		if query < self.a:
@@ -41,7 +40,7 @@ class Data_Rep:
 		return p_value
 
 	def _mixture_cdf(self, data, dist_list):
-		weights, distributions, log_l = mixem.em(data, dist_list, max_iterations=4)
+		weights, distributions, log_l = mixem.em(data, dist_list, max_iterations=100)
 		self.scipy_dists = self.get_scipy_dists(distributions)
 		return lambda query: sum([w * dist.cdf(query) for w, dist in zip(weights, self.scipy_dists)])
 
@@ -91,7 +90,6 @@ if __name__ == "__main__":
 
 	dist1 = CensoredNormalDistribution(mu=0, sigma=1, lower=0, upper=1)
 	dist2 = CensoredNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
-	#FIX HERE
 	nextdata1 = np.where(predata1 <= 0, 0, predata1)
 	data1 = np.where(nextdata1 >= 1, 1, nextdata1)
 
@@ -105,26 +103,25 @@ if __name__ == "__main__":
 	
 	data = np.concatenate((data1, data2))
 	dist_list = [dist1, dist2]
-	# scipy_dist_1,scipy_dist_2 = Data_Rep.get_scipy_dists(dist_list)
+	scipy_dist_1,scipy_dist_2 = Data_Rep.get_scipy_dists(dist_list)
 	mixture = Data_Rep(data, dist_list)
-	# post_scipy_dist_1, post_scipy_dist_2 = mixture.scipy_dists
+	post_scipy_dist_1, post_scipy_dist_2 = mixture.scipy_dists
 
 	x = np.arange(-2, 5, 0.001)
-	# pre_pdf = [scipy_dist_1.pdf(i) for i in x]
-	# pre_pdf_2 = [scipy_dist_2.pdf(i) for i in x]
+	pre_pdf = [scipy_dist_1.pdf(i) for i in x]
+	pre_pdf_2 = [scipy_dist_2.pdf(i) for i in x]
 
-	# pdf = [post_scipy_dist_1.pdf(i) for i in x]
-	# pdf_2 = [post_scipy_dist_2.pdf(i) for i in x]
+	pdf = [post_scipy_dist_1.pdf(i) for i in x]
+	pdf_2 = [post_scipy_dist_2.pdf(i) for i in x]
 
-	plt.hist(predata1, bins=100, normed=True)
-	# # plt.plot(x, pre_pdf, label="pre1")
-	# # plt.plot(x, pre_pdf_2, label="pre2")
-	# plt.plot(x, pdf, label="post1")
-	# plt.plot(x, pdf_2, label="post2")
-	# plt.legend()
-	# plt.ylim(0, 6)
-	# plt.show()
-
+	plt.hist(data, bins=100, normed=True)
+	plt.plot(x, pre_pdf, label="pre1")
+	plt.plot(x, pre_pdf_2, label="pre2")
+	plt.plot(x, pdf, label="post1")
+	plt.plot(x, pdf_2, label="post2")
+	plt.legend()
+	plt.ylim(0, 6)
+	plt.show()
 
 	# x = np.arange(
 	# 	min(
