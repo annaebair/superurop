@@ -6,23 +6,27 @@ from scipy.stats import norm, expon, truncnorm, lognorm
 import matplotlib.pyplot as plt
 from em import Moments, TruncatedNormalDistribution, CensoredNormalDistribution
 
+np.set_printoptions(threshold=np.nan)
+
+
 class censorednorm:
+
 	def __init__(self, loc, scale, a, b):
 		self.loc = loc
 		self.scale = scale
 		self.a = a
 		self.b = b
-		print("loc: ", loc, "; scale: ", scale)
+		# print("loc: ", loc, "; scale: ", scale)
 
 	def pdf(self, query):
 		if query < self.a:
 			return 0
-		elif query <= self.a+.01:
-			return norm.cdf((self.a-self.loc)/self.scale)
+		elif query <= self.a + 0.01:
+			return 500*norm.cdf((self.a-self.loc)/self.scale)
 		elif query < self.b:
 			return norm.pdf((query-self.loc)/self.scale)
 		elif query <= self.b + 0.01:
-			return 1-norm.cdf((self.b-self.loc)/self.scale)
+			return 500*(1-norm.cdf((self.b-self.loc)/self.scale))
 		else:
 			return 0
 
@@ -37,10 +41,9 @@ class Data_Rep:
 		return p_value
 
 	def _mixture_cdf(self, data, dist_list):
-		weights, distributions, log_l = mixem.em(data, dist_list)
+		weights, distributions, log_l = mixem.em(data, dist_list, max_iterations=4)
 		self.scipy_dists = self.get_scipy_dists(distributions)
 		return lambda query: sum([w * dist.cdf(query) for w, dist in zip(weights, self.scipy_dists)])
-
 
 	@staticmethod
 	def get_scipy_dists(distributions):
@@ -73,8 +76,8 @@ class Data_Rep:
 			elif dist_type == CensoredNormalDistribution:
 				loc = dist.mu
 				scale = dist.sigma
-				a = dist.a#(dist.a-loc)/scale
-				b = dist.b#(dist.b-loc)/scale
+				a = dist.a
+				b = dist.b
 				ss_dist = censorednorm(loc, scale, a, b)
 
 			scipy_dists.append(ss_dist)
@@ -83,45 +86,44 @@ class Data_Rep:
 
 if __name__ == "__main__":
 
-	dist1 = TruncatedNormalDistribution(mu=0, sigma=1, lower=0, upper=1)
-	dist2 = TruncatedNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
-
 	predata1 = np.random.normal(loc=0, scale=1, size=1000)
-	data1 = np.array(list(filter(lambda x: x > 0 and x < 1, predata1)))
-	# nextdata1 = np.where(predata1 >= 0, predata1, 0)
-	# data1 = np.where(nextdata1 <= 1, nextdata1, 1)
-	# print(data1)
-
 	predata2 = np.random.normal(loc=3, scale=1, size=1000)
-	# nextdata2 = np.where(predata2 >= 2, predata2, 2)
-	# data2 = np.where(nextdata2 <= 4, nextdata2, 4)
-	data2 = np.array(list(filter(lambda x: x > 2 and x < 4, predata2)))
+
+	dist1 = CensoredNormalDistribution(mu=0, sigma=1, lower=0, upper=1)
+	dist2 = CensoredNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
+	#FIX HERE
+	nextdata1 = np.where(predata1 <= 0, 0, predata1)
+	data1 = np.where(nextdata1 >= 1, 1, nextdata1)
+
+	nextdata2 = np.where(predata2 <= 2, 2, predata2)
+	data2 = np.where(nextdata2 >= 4, 4, nextdata2)
+	
+	# dist1 = TruncatedNormalDistribution(mu=0, sigma=1, lower=0, upper=1)
+	# dist2 = TruncatedNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
+	# data1 = np.array(list(filter(lambda x: x > 0 and x < 1, predata1)))
+	# data2 = np.array(list(filter(lambda x: x > 2 and x < 4, predata2)))
 	
 	data = np.concatenate((data1, data2))
 	dist_list = [dist1, dist2]
-	scipy_dist_1,scipy_dist_2 = Data_Rep.get_scipy_dists(dist_list)
+	# scipy_dist_1,scipy_dist_2 = Data_Rep.get_scipy_dists(dist_list)
 	mixture = Data_Rep(data, dist_list)
-	post_scipy_dist_1, post_scipy_dist_2 = mixture.scipy_dists
+	# post_scipy_dist_1, post_scipy_dist_2 = mixture.scipy_dists
 
 	x = np.arange(-2, 5, 0.001)
-	pre_pdf = [scipy_dist_1.pdf(i) for i in x]
-	pre_pdf_2 = [scipy_dist_2.pdf(i) for i in x]
+	# pre_pdf = [scipy_dist_1.pdf(i) for i in x]
+	# pre_pdf_2 = [scipy_dist_2.pdf(i) for i in x]
 
-	# loc = post_scipy_dist_1.loc
-	# scale = post_scipy_dist_1.scale
-	pdf = [post_scipy_dist_1.pdf(i) for i in x]
-	pdf_2 = [post_scipy_dist_2.pdf(i) for i in x]
+	# pdf = [post_scipy_dist_1.pdf(i) for i in x]
+	# pdf_2 = [post_scipy_dist_2.pdf(i) for i in x]
 
-	plt.plot(x, pre_pdf, label="pre1")
-	plt.plot(x, pre_pdf_2, label="pre2")
-
-
-	print("PDF: ", max(pdf))
-	plt.hist(data, bins=100, normed=True)
-	plt.plot(x, pdf, label="post1")
-	plt.plot(x, pdf_2, label="post2")
-	plt.legend()
-	plt.show()
+	plt.hist(predata1, bins=100, normed=True)
+	# # plt.plot(x, pre_pdf, label="pre1")
+	# # plt.plot(x, pre_pdf_2, label="pre2")
+	# plt.plot(x, pdf, label="post1")
+	# plt.plot(x, pdf_2, label="post2")
+	# plt.legend()
+	# plt.ylim(0, 6)
+	# plt.show()
 
 
 	# x = np.arange(
