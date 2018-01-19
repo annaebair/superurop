@@ -65,7 +65,7 @@ class TruncatedNormalDistribution(Distribution):
 		upper_cdf = 1 - norm.cdf(self.b, loc=self.mu, scale=self.sigma)
 		log_density = - ((data - self.mu) ** 2 / (2 * self.sigma ** 2) - np.log(self.sigma) \
 			- 0.5 * np.log(2 * np.pi) - np.log(1-(lower_cdf+upper_cdf)))
-		log_density = np.where(np.logical_or(data < self.a, data > self.b) , -np.inf, log_density)
+		log_density = np.where(np.logical_or(data < self.a, data > self.b) , -9999, log_density)
 		return log_density
 
 	def estimate_parameters(self, data, weights):
