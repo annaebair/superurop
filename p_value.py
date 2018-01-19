@@ -17,6 +17,14 @@ class censorednorm:
 		self.a = a
 		self.b = b
 
+	def cdf(self, query):
+		if query < self.a:
+			return 0
+		elif query < self.b:
+			return norm.cdf((query-self.loc)/self.scale)
+		else:
+			return 1
+
 	def pdf(self, query):
 		if query < self.a:
 			return 0
@@ -40,7 +48,8 @@ class Data_Rep:
 		return p_value
 
 	def _mixture_cdf(self, data, dist_list):
-		weights, distributions, log_l = mixem.em(data, dist_list, max_iterations=100)
+		weights, distributions, log_l = mixem.em(data, dist_list, max_iterations=100, progress_callback=None)
+		print("weights: ", weights)
 		self.scipy_dists = self.get_scipy_dists(distributions)
 		return lambda query: sum([w * dist.cdf(query) for w, dist in zip(weights, self.scipy_dists)])
 
@@ -88,18 +97,18 @@ if __name__ == "__main__":
 	predata1 = np.random.normal(loc=0, scale=1, size=1000)
 	predata2 = np.random.normal(loc=3, scale=1, size=1000)
 
-	dist1 = CensoredNormalDistribution(mu=0, sigma=1, lower=0, upper=1)
-	dist2 = CensoredNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
-	nextdata1 = np.where(predata1 <= 0, 0, predata1)
-	data1 = np.where(nextdata1 >= 1, 1, nextdata1)
+	dist1 = CensoredNormalDistribution(mu=0.5, sigma=1, lower=0, upper=1)
+	dist2 = CensoredNormalDistribution(mu=1.5, sigma=1, lower=2, upper=4)
+	data1 = np.where(predata1 <= 0, 0, predata1)
+	data1 = np.where(data1 >= 1, 1, data1)
 
 	nextdata2 = np.where(predata2 <= 2, 2, predata2)
 	data2 = np.where(nextdata2 >= 4, 4, nextdata2)
 	
-	# dist1 = TruncatedNormalDistribution(mu=0, sigma=1, lower=0, upper=1)
-	# dist2 = TruncatedNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
-	# data1 = np.array(list(filter(lambda x: x > 0 and x < 1, predata1)))
-	# data2 = np.array(list(filter(lambda x: x > 2 and x < 4, predata2)))
+	dist1 = TruncatedNormalDistribution(mu=0, sigma=1, lower=0, upper=1)
+	dist2 = TruncatedNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
+	data1 = np.array(list(filter(lambda x: x > 0 and x < 1, predata1)))
+	data2 = np.array(list(filter(lambda x: x > 2 and x < 4, predata2)))
 	
 	data = np.concatenate((data1, data2))
 	dist_list = [dist1, dist2]
@@ -114,6 +123,11 @@ if __name__ == "__main__":
 	pdf = [post_scipy_dist_1.pdf(i) for i in x]
 	pdf_2 = [post_scipy_dist_2.pdf(i) for i in x]
 
+	for i in [-1, 0, 0.5, 1, 1.5, 3, 4, 4.5, 5, 6, 7]:
+		query = i
+		p_val = mixture.get_p_value(query)
+		print("p value of %s: " % query, p_val)
+
 	plt.hist(data, bins=100, normed=True)
 	plt.plot(x, pre_pdf, label="pre1")
 	plt.plot(x, pre_pdf_2, label="pre2")
@@ -122,6 +136,7 @@ if __name__ == "__main__":
 	plt.legend()
 	plt.ylim(0, 6)
 	plt.show()
+
 
 	# x = np.arange(
 	# 	min(
