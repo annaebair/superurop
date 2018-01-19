@@ -1,7 +1,9 @@
 import pytest
 import numpy as np
 import scipy.stats as s
-from em import Moments, TruncatedNormalDistribution
+from math import isclose
+from em import Moments, TruncatedNormalDistribution, CensoredNormalDistribution
+from p_value import Data_Rep
 
 class TestEM:
 
@@ -116,5 +118,58 @@ class TestEM:
 
 	def test_estimate_parameters_cens_left(self):
 		pass
+
+	################ p-value #################
+
+	def test_censored_p_values(self):
+		data1 = np.random.normal(loc=0, scale=1, size=1000)
+		data1 = np.where(data1 <= 0, 0, data1)
+		data1 = np.where(data1 >= 1, 1, data1)
+
+		data2 = np.random.normal(loc=3, scale=1, size=1000)
+		data2 = np.where(data2 <= 2, 2, data2)
+		data2 = np.where(data2 >= 4, 4, data2)
+
+		dist1 = CensoredNormalDistribution(mu=0.5, sigma=1, lower=0, upper=1)
+		dist2 = CensoredNormalDistribution(mu=1.5, sigma=1, lower=2, upper=4)
+		
+		data = np.concatenate((data1, data2))
+		dist_list = [dist1, dist2]
+		mixture = Data_Rep(data, dist_list)
+
+		observed = []
+		for i in [-1, 1.5, 5]:
+			observed.append(mixture.get_p_value(i))
+		expected = [1.0, 0.5, 0.0]
+
+		assert observed == expected
+
+	def test_truncated_p_values(self):
+		data1 = np.random.normal(loc=0, scale=1, size=1000)
+		data2 = np.random.normal(loc=3, scale=1, size=1000)
+
+		data1 = np.array(list(filter(lambda x: x > 0 and x < 1, data1)))
+		data2 = np.array(list(filter(lambda x: x > 2 and x < 4, data2)))
+
+		dist1 = TruncatedNormalDistribution(mu=0.5, sigma=1, lower=0, upper=1)
+		dist2 = TruncatedNormalDistribution(mu=1.5, sigma=1, lower=2, upper=4)
+		
+		data = np.concatenate((data1, data2))
+		dist_list = [dist1, dist2]
+		mixture = Data_Rep(data, dist_list)
+
+		dist_weight = len(data2)/len(data)
+		expected = [1.0, dist_weight, 0.0]
+		observed = []
+		for i in [-1, 1.5, 5]:
+			observed.append(mixture.get_p_value(i))
+
+		for i in range(len(expected)):
+			assert isclose(expected[i], observed[i], abs_tol=1e-8)
+		
+
+		
+
+
 
 
