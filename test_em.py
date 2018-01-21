@@ -78,46 +78,102 @@ class TestEM:
 	################ Truncated log_density #################
 
 	def test_log_density_trunc_norm(self):
-		pass
+		mu = 4
+		sigma = 2
+		a = 3
+		b = 6
+		data = np.array([2, 3, 6, 7])
+		dist = TruncatedNormalDistribution(mu=mu, sigma=sigma, lower=a, upper=b)
+		actual = dist.log_density(data)
+		expected = np.array([-9999, -9999, -9999, -9999])
+		assert actual.all() == expected.all()
 
-	def test_log_density_trunc_right(self):
-		pass
-
-	def test_log_density_trunc_left(self):
-		pass
 
 	################ Censored log_density #################
 
 	def test_log_density_cens_norm(self):
-		pass
+		mu = 4
+		sigma = 2
+		a = 3
+		b = 6
+		data = np.array([2, 7])
+		dist = CensoredNormalDistribution(mu=mu, sigma=sigma, lower=a, upper=b)
+		actual = dist.log_density(data)
+		expected = np.array([-9999, -9999])
+		assert actual.all() == expected.all()
 
-	def test_log_density_cens_right(self):
-		pass
+	def test_log_density_cens_norm_at_bounds(self):
+		mu = 4
+		sigma = 2
+		a = 3
+		b = 6
+		data = np.array([3, 6])
+		dist = CensoredNormalDistribution(mu=mu, sigma=sigma, lower=a, upper=b)
+		actual = dist.log_density(data)
+		assert all(i > 1 for i in actual)
 
-	def test_log_density_cens_left(self):
-		pass
 
 	################ Truncated estimate_parameters #################	
 
 	def test_estimate_parameters_trunc_norm(self):
-		pass
+		mu = 4
+		sigma = 2
+		a = 3
+		b = 6
+		data = np.random.normal(loc=mu, scale=sigma, size=1000)
+		data = np.array(list(filter(lambda x: x > a and x < b, data)))
+		dist = TruncatedNormalDistribution(mu=mu, sigma=sigma, lower=a, upper=b)
+		actual = dist.estimate_parameters(data, np.ones((data.shape)))
+		new_mu = dist.mu
+		new_sigma = dist.sigma
+		assert isclose(mu, new_mu, abs_tol=0.5)
+		assert new_sigma > 0
 
-	def test_estimate_parameters_trunc_right(self):
-		pass
+	def test_estimate_parameters_trunc_norm_neg_mean(self):
+		mu = -2
+		sigma = 1
+		a = -3
+		b = -1
+		data = np.random.normal(loc=mu, scale=sigma, size=1000)
+		data = np.array(list(filter(lambda x: x > a and x < b, data)))
+		dist = TruncatedNormalDistribution(mu=mu, sigma=sigma, lower=a, upper=b)
+		actual = dist.estimate_parameters(data, np.ones((data.shape)))
+		new_mu = dist.mu
+		new_sigma = dist.sigma
+		assert isclose(mu, new_mu, abs_tol=0.5)
+		assert new_sigma > 0
 
-	def test_estimate_parameters_trunc_left(self):
-		pass
 
 	################ Censored estimate_parameters #################	
 
 	def test_estimate_parameters_cens_norm(self):
-		pass
+		mu = 4
+		sigma = 2
+		a = 3
+		b = 6
+		data = np.random.normal(loc=mu, scale=sigma, size=1000)
+		data = np.where(data <= a, a, data)
+		data = np.where(data >= b, b, data)
+		dist = CensoredNormalDistribution(mu=mu, sigma=sigma, lower=a, upper=b)
+		actual = dist.estimate_parameters(data, np.ones((data.shape)))
+		new_mu = dist.mu
+		new_sigma = dist.sigma
+		assert isclose(mu, new_mu, abs_tol=0.5)
+		assert new_sigma > 0
 
-	def test_estimate_parameters_cens_right(self):
-		pass
-
-	def test_estimate_parameters_cens_left(self):
-		pass
+	def test_estimate_parameters_cens_norm_neg_mean(self):
+		mu = -2
+		sigma = 1
+		a = -3
+		b = -1
+		data = np.random.normal(loc=mu, scale=sigma, size=1000)
+		data = np.array(list(filter(lambda x: x > a and x < b, data)))
+		dist = CensoredNormalDistribution(mu=mu, sigma=sigma, lower=a, upper=b)
+		actual = dist.estimate_parameters(data, np.ones((data.shape)))
+		new_mu = dist.mu
+		new_sigma = dist.sigma
+		assert isclose(mu, new_mu, abs_tol=0.5)
+		assert new_sigma > 0
 
 	################ p-value #################
 
@@ -166,10 +222,3 @@ class TestEM:
 
 		for i in range(len(expected)):
 			assert isclose(expected[i], observed[i], abs_tol=1e-8)
-		
-
-		
-
-
-
-
