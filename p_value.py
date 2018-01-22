@@ -48,10 +48,12 @@ class Data_Rep:
 		return p_value
 
 	def _mixture_cdf(self, data, dist_list):
-		weights, distributions, log_l = mixem.em(data, dist_list, max_iterations=100, progress_callback=None)
-		print("weights: ", weights)
-		self.scipy_dists = self.get_scipy_dists(distributions)
-		return lambda query: sum([w * dist.cdf(query) for w, dist in zip(weights, self.scipy_dists)])
+		self.weights, self.distributions, self.log_l = mixem.em(data, dist_list, max_iterations=100, progress_callback=None)
+		print("distributions: ", self.distributions)
+		print("weights: ", self.weights)
+		print("log_l: ", self.log_l)
+		self.scipy_dists = self.get_scipy_dists(self.distributions)
+		return lambda query: sum([w * dist.cdf(query) for w, dist in zip(self.weights, self.scipy_dists)])
 
 	@staticmethod
 	def get_scipy_dists(distributions):
@@ -94,34 +96,54 @@ class Data_Rep:
 
 if __name__ == "__main__":
 
-	predata1 = np.random.normal(loc=0, scale=1, size=1000)
-	predata2 = np.random.normal(loc=3, scale=1, size=1000)
+	# predata1 = np.random.normal(loc=0, scale=1, size=1000)
+	# predata2 = np.random.normal(loc=3, scale=1, size=1000)
 
-	dist1 = CensoredNormalDistribution(mu=0.5, sigma=1, lower=0, upper=1)
-	dist2 = CensoredNormalDistribution(mu=1.5, sigma=1, lower=2, upper=4)
-	data1 = np.where(predata1 <= 0, 0, predata1)
+	dist1 = CensoredNormalDistribution(mu=0.5, sigma=1, lower=-1, upper=1)
+	# dist2 = TruncatedNormalDistribution(mu=0, sigma=1, lower=-1, upper=1)
+	dist3 = mixem.distribution.NormalDistribution(mu=0.5, sigma=1)
+	# dist2 = CensoredNormalDistribution(mu=1.5, sigma=1, lower=2, upper=4)
+	# data1 = np.where(predata1 <= 0, 0, predata1)
+	# data1 = np.where(data1 >= 1, 1, data1)
+
+	# nextdata2 = np.where(predata2 <= 2, 2, predata2)
+	# data2 = np.where(nextdata2 >= 4, 4, nextdata2)
+	
+	# dist1 = TruncatedNormalDistribution(mu=0, sigma=1, lower=0, upper=1)
+	# dist2 = TruncatedNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
+	# data1 = np.array(list(filter(lambda x: x > 0 and x < 1, predata1)))
+	# data2 = np.array(list(filter(lambda x: x > 2 and x < 4, predata2)))
+
+
+	#censored
+	predata1 = np.random.normal(loc=0, scale=1, size=1000)
+	data1 = np.where(predata1 <= -1, -1, predata1)
 	data1 = np.where(data1 >= 1, 1, data1)
 
-	nextdata2 = np.where(predata2 <= 2, 2, predata2)
-	data2 = np.where(nextdata2 >= 4, 4, nextdata2)
+	#truncated
+	predata2 = np.random.normal(loc=0, scale=1, size=1000)
+	data2 = np.array(list(filter(lambda x: x > -1 and x < 1, predata2)))
+
+	#normal
+	data3 = np.random.normal(loc=1, scale=1, size=1000)
+	print(data1.shape)
+	print(data2.shape)
+	print(data3.shape)
+	data = np.concatenate((data1, data2, data3))
 	
-	dist1 = TruncatedNormalDistribution(mu=0, sigma=1, lower=0, upper=1)
-	dist2 = TruncatedNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
-	data1 = np.array(list(filter(lambda x: x > 0 and x < 1, predata1)))
-	data2 = np.array(list(filter(lambda x: x > 2 and x < 4, predata2)))
-	
-	data = np.concatenate((data1, data2))
-	dist_list = [dist1, dist2]
-	scipy_dist_1,scipy_dist_2 = Data_Rep.get_scipy_dists(dist_list)
+	data = np.concatenate((data1, data3))
+	dist_list = [dist1, dist3]
+	# scipy_dist_1,scipy_dist_2 = Data_Rep.get_scipy_dists(dist_list)
 	mixture = Data_Rep(data, dist_list)
-	post_scipy_dist_1, post_scipy_dist_2 = mixture.scipy_dists
+	post_scipy_dist_1, post_scipy_dist_3 = mixture.scipy_dists
 
 	x = np.arange(-2, 5, 0.001)
-	pre_pdf = [scipy_dist_1.pdf(i) for i in x]
-	pre_pdf_2 = [scipy_dist_2.pdf(i) for i in x]
+	# pre_pdf = [scipy_dist_1.pdf(i) for i in x]
+	# pre_pdf_2 = [scipy_dist_2.pdf(i) for i in x]
 
 	pdf = [post_scipy_dist_1.pdf(i) for i in x]
-	pdf_2 = [post_scipy_dist_2.pdf(i) for i in x]
+	# pdf_2 = [post_scipy_dist_2.pdf(i) for i in x]
+	pdf_3 = [post_scipy_dist_3.pdf(i) for i in x]
 
 	for i in [-1, 0, 0.5, 1, 1.5, 3, 4, 4.5, 5, 6, 7]:
 		query = i
@@ -129,10 +151,12 @@ if __name__ == "__main__":
 		print("p value of %s: " % query, p_val)
 
 	plt.hist(data, bins=100, normed=True)
-	plt.plot(x, pre_pdf, label="pre1")
-	plt.plot(x, pre_pdf_2, label="pre2")
+	# plt.plot(x, pre_pdf, label="pre1")
+	# plt.plot(x, pre_pdf_2, label="pre2")
+
 	plt.plot(x, pdf, label="post1")
-	plt.plot(x, pdf_2, label="post2")
+	# plt.plot(x, pdf_2, label="post2")
+	plt.plot(x, pdf_3, label="post3")
 	plt.legend()
 	plt.ylim(0, 6)
 	plt.show()
