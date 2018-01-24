@@ -62,9 +62,9 @@ class TruncatedNormalDistribution(Distribution):
 	def log_density(self, data):
 		assert(len(data.shape) == 1), "Expect 1D data!"
 		lower_cdf = norm.cdf(self.a, loc=self.mu, scale=self.sigma)
-		upper_cdf = 1 - norm.cdf(self.b, loc=self.mu, scale=self.sigma)
+		upper_cdf = norm.cdf(self.b, loc=self.mu, scale=self.sigma)
 		log_density = - ((data - self.mu) ** 2 / (2 * self.sigma ** 2) - np.log(self.sigma) \
-			- 0.5 * np.log(2 * np.pi) - np.log(1-(lower_cdf+upper_cdf)))
+			- 0.5 * np.log(2 * np.pi) - np.log(upper_cdf - lower_cdf))
 		log_density = np.where(np.logical_or(data < self.a, data > self.b) , -9999, log_density)
 		return log_density
 
@@ -94,7 +94,7 @@ class CensoredNormalDistribution(Distribution):
 	def log_density(self, data):
 		assert(len(data.shape) == 1), "Expect 1D data!"
 		log_density = - (data - self.mu) ** 2 / (2 * self.sigma ** 2) - np.log(self.sigma) - 0.5 * np.log(2 * np.pi)
-		log_density = np.where(np.logical_or(data < self.a, data > self.b) , -999, log_density)
+		log_density = np.where(np.logical_or(data < self.a, data > self.b) , -9999, log_density)
 		log_density = np.where(data == self.a, 50*self.norm_dist.cdf(self.a) , log_density)
 		log_density = np.where(data == self.b, 50*(1-self.norm_dist.cdf(self.b)), log_density)
 		return log_density
@@ -119,7 +119,7 @@ class CensoredNormalDistribution(Distribution):
 		right_indices = np.nonzero((new_data == right_first_moment))[0]
 		for i in right_indices:
 			S[i] += right_R_term
-		self.sigma = np.sum(S * weights) / wsum
+		self.sigma = np.sqrt(np.sum(S * weights) / wsum)
 
 	def __repr__(self):
 		return "CensoredNorm[μ={mu:.4g}, σ={sigma:.4g}]".format(mu=self.mu, sigma=self.sigma)
