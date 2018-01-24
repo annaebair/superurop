@@ -48,10 +48,12 @@ class Data_Rep:
 		return p_value
 
 	def _mixture_cdf(self, data, dist_list):
-		self.weights, self.distributions, self.log_l = mixem.em(data, dist_list, max_iterations=100, progress_callback=None)
-		print("distributions: ", self.distributions)
-		print("weights: ", self.weights)
-		print("log_l: ", self.log_l)
+		self.weights, self.distributions, self.log_l = mixem.em(data, dist_list, max_iterations=500, progress_callback=None)
+		# print("probability: ", sum(mixem.probability(data, np.array([0.5, 0.5]), dist_list)))
+		# print("probability: ", sum(mixem.probability(data, self.weights, self.distributions)))
+		# print("distributions: ", self.distributions)
+		# print("weights: ", self.weights)
+		# print("log_l: ", self.log_l)
 		self.scipy_dists = self.get_scipy_dists(self.distributions)
 		return lambda query: sum([w * dist.cdf(query) for w, dist in zip(self.weights, self.scipy_dists)])
 
@@ -96,97 +98,76 @@ class Data_Rep:
 
 if __name__ == "__main__":
 
-	# predata1 = np.random.normal(loc=0, scale=1, size=1000)
-	# predata2 = np.random.normal(loc=3, scale=1, size=1000)
-
-	dist1 = CensoredNormalDistribution(mu=0.5, sigma=1, lower=-1, upper=1)
-	# dist2 = TruncatedNormalDistribution(mu=0, sigma=1, lower=-1, upper=1)
-	dist3 = mixem.distribution.NormalDistribution(mu=0.5, sigma=1)
-	# dist2 = CensoredNormalDistribution(mu=1.5, sigma=1, lower=2, upper=4)
-	# data1 = np.where(predata1 <= 0, 0, predata1)
-	# data1 = np.where(data1 >= 1, 1, data1)
-
-	# nextdata2 = np.where(predata2 <= 2, 2, predata2)
-	# data2 = np.where(nextdata2 >= 4, 4, nextdata2)
-	
-	# dist1 = TruncatedNormalDistribution(mu=0, sigma=1, lower=0, upper=1)
-	# dist2 = TruncatedNormalDistribution(mu=3, sigma=1, lower=2, upper=4)
-	# data1 = np.array(list(filter(lambda x: x > 0 and x < 1, predata1)))
-	# data2 = np.array(list(filter(lambda x: x > 2 and x < 4, predata2)))
-
-
-	#censored
+	# Censored
 	predata1 = np.random.normal(loc=0, scale=1, size=1000)
-	data1 = np.where(predata1 <= -1, -1, predata1)
-	data1 = np.where(data1 >= 1, 1, data1)
+	data1 = np.where(predata1 <= -3, -3, predata1)
+	data1 = np.where(data1 >= 4, 4, data1)
+	dist1 = CensoredNormalDistribution(mu=0, sigma=1, lower=-3, upper=4)
 
-	#truncated
-	predata2 = np.random.normal(loc=0, scale=1, size=1000)
-	data2 = np.array(list(filter(lambda x: x > -1 and x < 1, predata2)))
+	# Censored
+	predata4 = np.random.normal(loc=3, scale=1, size=1000)
+	data4 = np.where(predata4 <= -3, -3, predata4)
+	data4 = np.where(data4 >= 4, 4, data4)
+	dist4 = CensoredNormalDistribution(mu=3, sigma=1, lower=-3, upper=4)
 
-	#normal
-	data3 = np.random.normal(loc=1, scale=1, size=1000)
-	print(data1.shape)
-	print(data2.shape)
-	print(data3.shape)
-	data = np.concatenate((data1, data2, data3))
+	# Truncated
+	predata2 = np.random.normal(loc=0, scale=1, size=1447)
+	data2 = np.array(list(filter(lambda x: x > -1 and x < 3, predata2)))
+	dist2 = TruncatedNormalDistribution(mu=0.5, sigma=1, lower=-1, upper=3)
+
+	# Truncated
+	predata5 = np.random.normal(loc=2, scale=1, size=1547)
+	data5 = np.array(list(filter(lambda x: x > 0 and x < 4, predata5)))
+	dist5 = TruncatedNormalDistribution(mu=2, sigma=1, lower=0, upper=4)
+
+	# Normal
+	data3 = np.random.normal(loc=2, scale=1, size=1000)
+	dist3 = mixem.distribution.NormalDistribution(mu=0.5, sigma=1)
 	
-	data = np.concatenate((data1, data3))
-	dist_list = [dist1, dist3]
-	# scipy_dist_1,scipy_dist_2 = Data_Rep.get_scipy_dists(dist_list)
+	data = np.concatenate((data1, data4))
+	dist_list = [dist1, dist4]
 	mixture = Data_Rep(data, dist_list)
 	post_scipy_dist_1, post_scipy_dist_3 = mixture.scipy_dists
 
-	x = np.arange(-2, 5, 0.001)
-	# pre_pdf = [scipy_dist_1.pdf(i) for i in x]
-	# pre_pdf_2 = [scipy_dist_2.pdf(i) for i in x]
+	def find_best_initialization(data1, data2):
+		best_log_l = -np.inf
+		best_mus = None
+		i=0
+		best_dists = None
+		for mu_1 in np.arange(-3, -1, 0.1):
+			for mu_2 in np.arange(3, 5, 0.1):
+				print(f'Iteration {i}: {mu_1} & {mu_2}')
+				dist1 = CensoredNormalDistribution(mu=mu_1, sigma=1, lower=-3, upper=4)
+				dist2 = CensoredNormalDistribution(mu=mu_2, sigma=1, lower=-3, upper=4)
+				data = np.concatenate((data1, data2))
+				dist_list = [dist1, dist2]
+				mixture = Data_Rep(data, dist_list)
+				mixture_log_l = mixture.log_l
+				if mixture_log_l > best_log_l:
+					best_log_l = mixture_log_l
+					best_mus = (mu_1, mu_2)
+					best_dists = mixture.distributions
+				i += 1
+		print("Best log likelihood: ", best_log_l)
+		print("Best mus: ", best_mus)
+		print("Best dists: ", best_dists)
+
+	find_best_initialization(data1, data4)
+
+	x = np.arange(-7, 7, 0.001)
 
 	pdf = [post_scipy_dist_1.pdf(i) for i in x]
-	# pdf_2 = [post_scipy_dist_2.pdf(i) for i in x]
 	pdf_3 = [post_scipy_dist_3.pdf(i) for i in x]
 
 	for i in [-1, 0, 0.5, 1, 1.5, 3, 4, 4.5, 5, 6, 7]:
 		query = i
 		p_val = mixture.get_p_value(query)
-		print("p value of %s: " % query, p_val)
+		# print("p value of %s: " % query, p_val)
 
-	plt.hist(data, bins=100, normed=True)
-	# plt.plot(x, pre_pdf, label="pre1")
-	# plt.plot(x, pre_pdf_2, label="pre2")
+	plt.hist(data1, bins=100, normed=True)
+	plt.hist(data4, bins=100, normed=True)
 
-	plt.plot(x, pdf, label="post1")
-	# plt.plot(x, pdf_2, label="post2")
-	plt.plot(x, pdf_3, label="post3")
-	plt.legend()
+	plt.plot(x, pdf)
+	plt.plot(x, pdf_3)
 	plt.ylim(0, 6)
 	plt.show()
-
-
-	# x = np.arange(
-	# 	min(
-	# 		-1.5, scipy_dist_1.ppf(0.001), scipy_dist_2.ppf(0.001),
-	# 	    post_scipy_dist_1.ppf(0.001), post_scipy_dist_2.ppf(0.001)
-	# 	),
-	# 	max(
-	# 		4.5, scipy_dist_1.ppf(0.999), scipy_dist_2.ppf(0.999),
-	# 		post_scipy_dist_1.ppf(0.999), post_scipy_dist_2.ppf(0.999)
-	# 	),
-	# 	0.01
-	# )
-
-	# x = np.arange(0, 100000, 0.01)
-
-	# plt.subplot(2, 1, 1)
-	# plt.hist(data1, bins=100, normed=True)
-	# plt.plot(x, post_scipy_dist_1.pdf(x))
-	# plt.xlim(0, 600)
-	# plt.title("Distribution 1")
-
-	# plt.subplot(2, 1, 2)
-	# plt.hist(data2, bins=300, normed=True)
-	# plt.plot(x, post_scipy_dist_2.pdf(x))
-	# plt.xlim(0, 50000)
-	# plt.title("Distribution 2")
-	# plt.tight_layout()
-
-	# plt.show()
