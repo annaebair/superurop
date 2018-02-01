@@ -63,8 +63,8 @@ class TruncatedNormalDistribution(Distribution):
 		assert(len(data.shape) == 1), "Expect 1D data!"
 		lower_cdf = norm.cdf(self.a, loc=self.mu, scale=self.sigma)
 		upper_cdf = norm.cdf(self.b, loc=self.mu, scale=self.sigma)
-		log_density = - ((data - self.mu) ** 2 / (2 * self.sigma ** 2) - np.log(self.sigma) \
-			- 0.5 * np.log(2 * np.pi) - np.log(upper_cdf - lower_cdf))
+		log_density = - (data - self.mu) ** 2 / (2 * self.sigma ** 2) - np.log(self.sigma) \
+			- 0.5 * np.log(2 * np.pi) - np.log(upper_cdf - lower_cdf)
 		log_density = np.where(np.logical_or(data < self.a, data > self.b) , -9999, log_density)
 		return log_density
 
