@@ -103,6 +103,34 @@ class TestEM:
 		for i in range(len(expected)):
 			assert isclose(actual[i], expected[i], abs_tol=1e-10)
 
+	def test_trunc_log_density_shifted_small_sig(self):
+		mu=3
+		sigma=0.5
+		a=1
+		b=4
+		data = np.array([1, 1.5, 2, 3, 3.9])
+		expected_dist = s.truncnorm(loc=mu, scale=sigma, a=(a-mu)/sigma, b=(b-mu)/sigma)
+		actual_dist = TruncatedNormalDistribution(mu=mu, sigma=sigma, lower=a, upper=b)
+		expected = expected_dist.logpdf(data)
+		actual = actual_dist.log_density(data)
+		for i in range(len(expected)):
+			assert isclose(actual[i], expected[i], abs_tol=1e-10)
+
+	def test_trunc_log_density_shifted_small_sig_outside_range(self):
+		mu=3
+		sigma=0.5
+		a=1
+		b=4
+		data = np.array([-1, 0, 0.5, 5])
+		expected_dist = s.truncnorm(loc=mu, scale=sigma, a=(a-mu)/sigma, b=(b-mu)/sigma)
+		actual_dist = TruncatedNormalDistribution(mu=mu, sigma=sigma, lower=a, upper=b)
+		expected = expected_dist.logpdf(data)
+		expected = np.where(expected == np.inf, -9999, expected)
+		expected = np.where(expected == -np.inf, -9999, expected)
+		actual = actual_dist.log_density(data)
+		for i in range(len(expected)):
+			assert isclose(actual[i], expected[i], abs_tol=1e-10)
+
 	def test_trunc_log_density_outside_range(self):
 		mu=3
 		sigma=2
@@ -112,8 +140,8 @@ class TestEM:
 		expected_dist = s.truncnorm(loc=mu, scale=sigma, a=(a-mu)/sigma, b=(b-mu)/sigma)
 		actual_dist = TruncatedNormalDistribution(mu=mu, sigma=sigma, lower=a, upper=b)
 		expected = expected_dist.logpdf(data)
-		expected[0] = -9999
-		expected[-1] = -9999
+		expected = np.where(expected == np.inf, -9999, expected)
+		expected = np.where(expected == -np.inf, -9999, expected)
 		actual = actual_dist.log_density(data)
 		for i in range(len(expected)):
 			assert isclose(actual[i], expected[i], abs_tol=1e-10)
@@ -267,24 +295,45 @@ class TestEM:
 			assert isclose(expected[i], observed[i], abs_tol=1e-8)
 
 
+	def test_truncated_p_values_same_range(self):
+		data1 = np.random.normal(loc=0, scale=1, size=1000)
+		data2 = np.random.normal(loc=3, scale=1, size=1000)
+
+		data1 = np.array(list(filter(lambda x: x > 0 and x < 4, data1)))
+		data2 = np.array(list(filter(lambda x: x > 0 and x < 4, data2)))
+
+		dist1 = TruncatedNormalDistribution(mu=0.5, sigma=1, lower=0, upper=4)
+		dist2 = TruncatedNormalDistribution(mu=1.5, sigma=1, lower=0, upper=4)
+		
+		data = np.concatenate((data1, data2))
+		dist_list = [dist1, dist2]
+		mixture = Data_Rep(data, dist_list)
+
+		dist_weight = len(data2)/len(data)
+		expected = [1.0, dist_weight, 0.0]
+		observed = []
+		for i in [-1, 1.5, 5]:
+			observed.append(mixture.get_p_value(i))
+
+		for i in range(len(expected)):
+			assert isclose(expected[i], observed[i], abs_tol=0.05)
+
 
 	# def test_censored_and_normal_p_values(self):
-	# 	data1 = np.random.normal(loc=0, scale=1, size=1000)
+	# 	data1 = np.random.normal(loc=0, scale=1, size=10000)
 	# 	data1 = np.where(data1 <= 0, 0, data1)
 	# 	data1 = np.where(data1 >= 1, 1, data1)
 
-	# 	data2 = np.random.normal(loc=3, scale=1, size=1000)
+	# 	data2 = np.random.normal(loc=3, scale=1, size=10000)
 
 	# 	dist1 = CensoredNormalDistribution(mu=0.5, sigma=1, lower=0, upper=1)
 	# 	dist2 = NormalDistribution(mu=3, sigma=1)
-
-	# 	# after dataRep, make sure that params are close to expected
 		
 	# 	data = np.concatenate((data1, data2))
 	# 	dist_list = [dist1, dist2]
 	# 	mixture = Data_Rep(data, dist_list)
 	# 	dist_weight = mixture.weights[0]
-	# 	print("sf: ", s.norm.sf(-1.5))
+	# 	print(mixture.distributions)
 
 	# 	observed = []
 	# 	for i in [-1, 1.5, 5]:
@@ -293,6 +342,11 @@ class TestEM:
 
 	# 	#get p values of normal
 	# 	print(observed)
+	# 	print(expected)
 
 	# 	for i in range(len(expected)):
 	# 		assert isclose(expected[i], observed[i], abs_tol=1e-4)
+
+		# 500 might be causing problem here?
+
+	#TODO: test 2 truncated over same region, two censored over same region, over overlapping regions
