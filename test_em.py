@@ -318,34 +318,28 @@ class TestEM:
 		for i in range(len(expected)):
 			assert isclose(expected[i], observed[i], abs_tol=0.05)
 
+	def test_censored_and_normal_p_values(self):
+		data1 = np.random.normal(loc=0, scale=1, size=10000)
+		data1 = np.where(data1 <= 0, 0, data1)
+		data1 = np.where(data1 >= 1, 1, data1)
 
-	# def test_censored_and_normal_p_values(self):
-	# 	data1 = np.random.normal(loc=0, scale=1, size=10000)
-	# 	data1 = np.where(data1 <= 0, 0, data1)
-	# 	data1 = np.where(data1 >= 1, 1, data1)
+		data2 = np.random.normal(loc=3, scale=1, size=10000)
 
-	# 	data2 = np.random.normal(loc=3, scale=1, size=10000)
-
-	# 	dist1 = CensoredNormalDistribution(mu=0.5, sigma=1, lower=0, upper=1)
-	# 	dist2 = NormalDistribution(mu=3, sigma=1)
+		dist1 = CensoredNormalDistribution(mu=0.5, sigma=1, lower=0, upper=1)
+		dist2 = NormalDistribution(mu=3, sigma=1)
 		
-	# 	data = np.concatenate((data1, data2))
-	# 	dist_list = [dist1, dist2]
-	# 	mixture = Data_Rep(data, dist_list)
-	# 	dist_weight = mixture.weights[0]
-	# 	print(mixture.distributions)
+		data = np.concatenate((data1, data2))
+		dist_list = [dist1, dist2]
+		mixture = Data_Rep(data, dist_list)
+		dist_weight = mixture.weights[0]
 
-	# 	observed = []
-	# 	for i in [-1, 1.5, 5]:
-	# 		observed.append(mixture.get_p_value(i))
-	# 	expected = [0+s.norm.sf(-4), 1-(dist_weight+s.norm.cdf(-1.5)), 0+ s.norm.sf(2)] #manually get p value here
+		observed = []
+		for i in [-1, 1.5, 5]:
+			observed.append(mixture.get_p_value(i))
+		expected = [0+s.norm.sf(-4), 1-(dist_weight+s.norm.cdf(-1.5)), 0+ s.norm.sf(2)] #manually get p value here
 
-	# 	#get p values of normal
-	# 	print(observed)
-	# 	print(expected)
-
-	# 	for i in range(len(expected)):
-	# 		assert isclose(expected[i], observed[i], abs_tol=1e-4)
+		for i in range(len(expected)):
+			assert isclose(expected[i], observed[i], abs_tol=0.05)
 
 		# 500 might be causing problem here?
 
